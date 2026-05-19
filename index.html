@@ -1351,9 +1351,9 @@ function renderOrgs(){
     const allCats=[...ORG_CATS,{key:'other',label:'Other'}].filter(c=>(counts[c.key]||0)>0);
     catDiv.innerHTML='<span class="org-cat-filter-lbl">Filter by:</span>'+
       ['all',...allCats.map(c=>c.key)].map(k=>{
-        if(k==='all') return `<button class="cat-pill${orgListCat===null?' active':''}" onclick="setOrgCat(null,data)">All (${data.length})</button>`;
+        if(k==='all') return `<button class="cat-pill${orgListCat===null?' active':''}" onclick="setOrgCat(null)">All (${data.length})</button>`;
         const c=allCats.find(x=>x.key===k);
-        return `<button class="cat-pill${orgListCat===k?' active':''}" onclick="setOrgCat('${k}',data)">${c.label} (${counts[k]||0})</button>`;
+        return `<button class="cat-pill${orgListCat===k?' active':''}" onclick="setOrgCat('${k}')">${c.label} (${counts[k]||0})</button>`;
       }).join('');
   }
   _renderOrgList(data);
