@@ -1382,7 +1382,7 @@ function renderOrgs(){
     this.classList.add('active');orgSort=this.dataset.sort;_renderOrgList(data);};});
 }
 function dd_close(){const dd=document.getElementById('org-search-dd');if(dd)dd.style.display='none';}
-function setOrgCat(cat,data){
+function setOrgCat(cat){
   orgListCat=cat;
   document.querySelectorAll('#org-cat-filter .cat-pill').forEach(b=>{
     const k=b.getAttribute('onclick').match(/setOrgCat\('?(\w+|null)'?/)?.[1];
