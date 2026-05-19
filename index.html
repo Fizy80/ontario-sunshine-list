@@ -1388,7 +1388,7 @@ function setOrgCat(cat){
     const k=b.getAttribute('onclick').match(/setOrgCat\('?(\w+|null)'?/)?.[1];
     b.classList.toggle('active',(cat===null&&k==='null')||(cat!==null&&k===cat));
   });
-  _renderOrgList(data||window.EMPLOYER_IDX||[]);
+  _renderOrgList(window.EMPLOYER_IDX||[]);
 }
 function _renderOrgList(data){
   let list=orgFilter?data.filter(o=>o.name.toLowerCase().includes(orgFilter)):data.slice();
