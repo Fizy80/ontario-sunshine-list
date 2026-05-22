@@ -2993,4 +2993,18 @@ function _ga4StartRealtime() {
 })();
 
 // On admin login, check if client ID is stored
-function _ga4On
+function _ga4OnAdminLoad() {
+  _ga4SetStatus('Ready — click Connect GA4', false);
+}
+
+_skipHistory=false;
+// Load full search index in background for history and search
+(function(){
+  var s=document.createElement('script');
+  s.src='search_complete.js';
+  s.async=true;
+  document.head.appendChild(s);
+})();
+</script>
+</body>
+</html>
