@@ -44,6 +44,11 @@
 
 <!-- Canonical -->
 <link rel="canonical" href="https://ontario-sunshinelist.org/">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
 <link rel="sitemap" type="application/xml" href="/sitemap.xml">
 
 <!-- Preconnect -->
@@ -725,6 +730,7 @@ footer strong{color:var(--text2)}
 ]
 </script>
 <script src="home_stub.js?v=2"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -1071,16 +1077,100 @@ footer strong{color:var(--text2)}
       <div id="adm-event-log" style="max-height:260px;overflow-y:auto;font-size:.75rem;font-family:monospace"></div>
     </div>
 
-    <!-- GA4 quick links -->
+    <!-- ── GA4 Live Analytics ── -->
+    <div id="adm-ga4-wrap" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:1.25rem">
+      <div style="padding:.85rem 1.1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+        <div style="font-weight:700;font-size:.88rem">📊 Google Analytics (Live)</div>
+        <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+          <span id="ga4-status-dot" style="display:none;width:8px;height:8px;border-radius:50%;background:#22c55e"></span>
+          <span id="ga4-status-txt" style="font-size:.75rem;color:var(--muted)"></span>
+          <button id="ga4-signin-btn" onclick="_ga4SignIn()"
+            style="padding:.3rem .8rem;border-radius:6px;background:var(--gold);color:#fff;font-size:.78rem;font-weight:600;border:none;cursor:pointer">
+            Connect GA4
+          </button>
+          <button id="ga4-signout-btn" onclick="_ga4SignOut()" style="display:none;padding:.3rem .8rem;border-radius:6px;background:none;border:1px solid var(--border);font-size:.78rem;cursor:pointer;color:var(--muted)">
+            Disconnect
+          </button>
+        </div>
+      </div>
+
+      <!-- Client ID setup (shown when not configured) -->
+      <div id="ga4-setup" style="padding:1.25rem 1.1rem;display:none">
+        <p style="font-size:.82rem;color:var(--muted);margin:0 0 .75rem">
+          Enter your <strong>Google OAuth Client ID</strong> to connect GA4 directly. One-time setup.
+          <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:var(--gold)">Get it from Google Cloud Console →</a>
+          <br><small style="font-size:.75rem">Enable the <strong>Google Analytics Data API</strong>, create an OAuth 2.0 Client ID (Web app), add <code>https://ontario-sunshinelist.org</code> as an authorized origin.</small>
+        </p>
+        <div style="display:flex;gap:.5rem">
+          <input id="ga4-client-id-input" type="text" placeholder="xxxxx.apps.googleusercontent.com"
+            style="flex:1;padding:.5rem .75rem;border:1.5px solid var(--border2);border-radius:7px;background:var(--surface2);color:var(--text);font-size:.82rem">
+          <button onclick="_ga4SaveClientId()"
+            style="padding:.5rem 1rem;border-radius:7px;background:var(--gold);color:#fff;font-weight:600;font-size:.82rem;border:none;cursor:pointer">Save</button>
+        </div>
+      </div>
+
+      <!-- GA4 data panels -->
+      <div id="ga4-panels" style="display:none;padding:1rem 1.1rem">
+        <!-- Period selector -->
+        <div style="display:flex;gap:.4rem;margin-bottom:1rem;flex-wrap:wrap">
+          <button class="ga4-period-btn active" data-days="7" onclick="_ga4SetPeriod(7)">7 days</button>
+          <button class="ga4-period-btn" data-days="28" onclick="_ga4SetPeriod(28)">28 days</button>
+          <button class="ga4-period-btn" data-days="90" onclick="_ga4SetPeriod(90)">90 days</button>
+          <button onclick="_loadGA4Data()" style="margin-left:auto;padding:.25rem .65rem;border-radius:5px;border:1px solid var(--border);background:none;color:var(--muted);font-size:.75rem;cursor:pointer">↺ Refresh</button>
+        </div>
+
+        <!-- KPI row -->
+        <div id="ga4-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.65rem;margin-bottom:1.1rem"></div>
+
+        <!-- Sessions chart -->
+        <div style="background:var(--surface2);border-radius:10px;padding:.85rem;margin-bottom:1rem">
+          <div style="font-size:.8rem;font-weight:700;margin-bottom:.6rem;color:var(--text2)">Sessions over time</div>
+          <canvas id="ga4-sessions-chart" height="80"></canvas>
+        </div>
+
+        <!-- Real-time + sources row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem">
+          <div style="background:var(--surface2);border-radius:10px;padding:.85rem">
+            <div style="font-size:.8rem;font-weight:700;margin-bottom:.6rem;color:var(--text2)">⚡ Right Now</div>
+            <div id="ga4-realtime" style="text-align:center;padding:.5rem 0">
+              <div id="ga4-rt-count" style="font-size:2.5rem;font-weight:800;color:var(--gold)">—</div>
+              <div style="font-size:.75rem;color:var(--muted)">active users</div>
+            </div>
+            <div id="ga4-rt-pages" style="margin-top:.6rem"></div>
+          </div>
+          <div style="background:var(--surface2);border-radius:10px;padding:.85rem">
+            <div style="font-size:.8rem;font-weight:700;margin-bottom:.6rem;color:var(--text2)">Traffic Sources</div>
+            <div id="ga4-sources"></div>
+          </div>
+        </div>
+
+        <!-- Top pages + devices row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
+          <div style="background:var(--surface2);border-radius:10px;padding:.85rem">
+            <div style="font-size:.8rem;font-weight:700;margin-bottom:.6rem;color:var(--text2)">Top Pages</div>
+            <div id="ga4-top-pages"></div>
+          </div>
+          <div style="background:var(--surface2);border-radius:10px;padding:.85rem">
+            <div style="font-size:.8rem;font-weight:700;margin-bottom:.6rem;color:var(--text2)">Devices</div>
+            <div id="ga4-devices"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Error state -->
+      <div id="ga4-error" style="display:none;padding:1rem 1.1rem;font-size:.82rem;color:#e74c3c"></div>
+    </div>
+
+    <!-- GA4 quick links (always visible) -->
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem 1.1rem">
       <div style="font-weight:700;font-size:.88rem;margin-bottom:.75rem">GA4 Quick Links</div>
       <div style="display:flex;flex-wrap:wrap;gap:.5rem">
-        <a class="adm-ga4-link" href="https://analytics.google.com/analytics/web/#/p471034534/reports/reportinghub" target="_blank">📊 Reports Home</a>
-        <a class="adm-ga4-link" href="https://analytics.google.com/analytics/web/#/p471034534/realtime" target="_blank">⚡ Realtime</a>
-        <a class="adm-ga4-link" href="https://analytics.google.com/analytics/web/#/p471034534/reports/acquisition-traffic-acquisition" target="_blank">🔀 Traffic Sources</a>
-        <a class="adm-ga4-link" href="https://analytics.google.com/analytics/web/#/p471034534/reports/lifecycle-engagement-pages-and-screens" target="_blank">📄 Pages &amp; Screens</a>
-        <a class="adm-ga4-link" href="https://analytics.google.com/analytics/web/#/p471034534/reports/lifecycle-engage-events" target="_blank">🎯 Events</a>
-        <a class="adm-ga4-link" href="https://analytics.google.com/analytics/web/#/p471034534/reports/user-user-technology-detail" target="_blank">🖥 Tech &amp; Devices</a>
+        <a class="adm-ga4-link" href="https://analytics.google.com/analytics/web/#/p228779632/reports/reportinghub" target="_blank">📊 Reports Home</a>
+        <a class="adm-ga4-link" href="https://analytics.google.com/analytics/web/#/p228779632/realtime" target="_blank">⚡ Realtime</a>
+        <a class="adm-ga4-link" href="https://analytics.google.com/analytics/web/#/p228779632/reports/acquisition-traffic-acquisition" target="_blank">🔀 Traffic Sources</a>
+        <a class="adm-ga4-link" href="https://analytics.google.com/analytics/web/#/p228779632/reports/lifecycle-engagement-pages-and-screens" target="_blank">📄 Pages &amp; Screens</a>
+        <a class="adm-ga4-link" href="https://analytics.google.com/analytics/web/#/p228779632/reports/lifecycle-engage-events" target="_blank">🎯 Events</a>
+        <a class="adm-ga4-link" href="https://analytics.google.com/analytics/web/#/p228779632/reports/user-user-technology-detail" target="_blank">🖥 Tech &amp; Devices</a>
       </div>
     </div>
   </div>
@@ -1161,6 +1251,7 @@ async function _admLogin() {
     document.getElementById('adm-gate').style.display='none';
     document.getElementById('adm-dash').style.display='';
     renderAdmin();
+    _ga4OnAdminLoad();
   } else {
     const err = document.getElementById('adm-pw-err');
     if(err) { err.style.display=''; }
@@ -2651,14 +2742,255 @@ else if(_qs){
   const _si2=document.getElementById('si');
   if(_si2){_si2.value=_qs; setTimeout(()=>doSearch(_qs),100);}
 } else nav(h0||'home');
-_skipHistory=false;
-// Load full search index in background for history and search
+
+// ── GA4 Analytics Integration ──────────────────────────────────────
+const _GA4_PROP = '228779632';
+const _GA4_CID_KEY = '_sl_ga4_cid';
+const _GA4_CLIENT_ID = '598560026853-0bnecm8vamrs2i63j5u4ulhjlo0m8088.apps.googleusercontent.com';
+let _ga4Token = null;
+let _ga4Period = 7;
+let _ga4RtTimer = null;
+let _ga4Chart = null;
+
+function _ga4GetClientId() {
+  return _GA4_CLIENT_ID;
+}
+function _ga4SaveClientId() {
+  const v = (document.getElementById('ga4-client-id-input')?.value||'').trim();
+  if (!v) return;
+  try { localStorage.setItem(_GA4_CID_KEY, v); } catch(e){}
+  document.getElementById('ga4-setup').style.display = 'none';
+  document.getElementById('ga4-signin-btn').style.display = '';
+}
+function _ga4SetStatus(txt, connected) {
+  const dot = document.getElementById('ga4-status-dot');
+  const el = document.getElementById('ga4-status-txt');
+  if (el) el.textContent = txt;
+  if (dot) { dot.style.display = connected ? '' : 'none'; dot.style.background = connected ? '#22c55e' : '#e74c3c'; }
+}
+function _ga4ShowError(msg) {
+  const el = document.getElementById('ga4-error');
+  if (el) { el.textContent = '⚠ ' + msg; el.style.display = ''; }
+}
+function _ga4SignIn() {
+  const cid = _ga4GetClientId();
+  if (!cid) {
+    document.getElementById('ga4-setup').style.display = '';
+    return;
+  }
+  try {
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: cid,
+      scope: 'https://www.googleapis.com/auth/analytics.readonly',
+      callback: (resp) => {
+        if (resp.error) { _ga4ShowError('Sign-in failed: ' + resp.error); return; }
+        _ga4Token = resp.access_token;
+        document.getElementById('ga4-signin-btn').style.display = 'none';
+        document.getElementById('ga4-signout-btn').style.display = '';
+        document.getElementById('ga4-panels').style.display = '';
+        document.getElementById('ga4-error').style.display = 'none';
+        _ga4SetStatus('Connected', true);
+        _loadGA4Data();
+        _ga4StartRealtime();
+      }
+    });
+    client.requestAccessToken();
+  } catch(e) {
+    _ga4ShowError('Google Identity Services not loaded yet. Try again in a moment.');
+  }
+}
+function _ga4SignOut() {
+  _ga4Token = null;
+  clearInterval(_ga4RtTimer);
+  document.getElementById('ga4-signin-btn').style.display = '';
+  document.getElementById('ga4-signout-btn').style.display = 'none';
+  document.getElementById('ga4-panels').style.display = 'none';
+  _ga4SetStatus('', false);
+}
+function _ga4SetPeriod(days) {
+  _ga4Period = days;
+  document.querySelectorAll('.ga4-period-btn').forEach(b => {
+    b.classList.toggle('active', +b.dataset.days === days);
+  });
+  _loadGA4Data();
+}
+async function _ga4Run(endpoint, body) {
+  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${_GA4_PROP}:${endpoint}`;
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + _ga4Token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) {
+    const e = await r.json().catch(()=>({error:{message:r.statusText}}));
+    throw new Error(e?.error?.message || r.statusText);
+  }
+  return r.json();
+}
+function _ga4Val(row, idx) { return row?.metricValues?.[idx]?.value||'0'; }
+function _ga4Dim(row, idx) { return row?.dimensionValues?.[idx]?.value||''; }
+
+async function _loadGA4Data() {
+  if (!_ga4Token) return;
+  _ga4SetStatus('Loading…', true);
+  try {
+    const end = 'today', start = `${_ga4Period}daysAgo`;
+    // Parallel requests
+    const [summary, byDate, sources, pages, devices] = await Promise.all([
+      _ga4Run('runReport', {
+        dateRanges:[{startDate:start,endDate:end}],
+        metrics:[{name:'sessions'},{name:'activeUsers'},{name:'newUsers'},{name:'screenPageViews'},{name:'bounceRate'},{name:'averageSessionDuration'}]
+      }),
+      _ga4Run('runReport', {
+        dateRanges:[{startDate:start,endDate:end}],
+        dimensions:[{name:'date'}],
+        metrics:[{name:'sessions'},{name:'activeUsers'}],
+        orderBys:[{dimension:{dimensionName:'date'}}]
+      }),
+      _ga4Run('runReport', {
+        dateRanges:[{startDate:start,endDate:end}],
+        dimensions:[{name:'sessionDefaultChannelGroup'}],
+        metrics:[{name:'sessions'}],
+        orderBys:[{metric:{metricName:'sessions'},desc:true}],
+        limit:6
+      }),
+      _ga4Run('runReport', {
+        dateRanges:[{startDate:start,endDate:end}],
+        dimensions:[{name:'pagePath'}],
+        metrics:[{name:'screenPageViews'}],
+        orderBys:[{metric:{metricName:'screenPageViews'},desc:true}],
+        limit:8
+      }),
+      _ga4Run('runReport', {
+        dateRanges:[{startDate:start,endDate:end}],
+        dimensions:[{name:'deviceCategory'}],
+        metrics:[{name:'sessions'}],
+        orderBys:[{metric:{metricName:'sessions'},desc:true}]
+      })
+    ]);
+    _ga4RenderKPIs(summary);
+    _ga4RenderChart(byDate);
+    _ga4RenderSources(sources);
+    _ga4RenderPages(pages);
+    _ga4RenderDevices(devices);
+    _ga4SetStatus(`Updated ${new Date().toLocaleTimeString()}`, true);
+  } catch(e) {
+    _ga4ShowError(e.message);
+    _ga4SetStatus('Error', false);
+  }
+}
+function _ga4RenderKPIs(d) {
+  const r = d.rows?.[0];
+  if (!r) return;
+  const sess = +_ga4Val(r,0), users = +_ga4Val(r,1), newU = +_ga4Val(r,2),
+        pvs = +_ga4Val(r,3), bounce = +_ga4Val(r,4), dur = +_ga4Val(r,5);
+  const durFmt = dur >= 60 ? `${Math.floor(dur/60)}m ${Math.round(dur%60)}s` : `${Math.round(dur)}s`;
+  const kpis = [
+    {label:'Sessions', val: sess.toLocaleString(), icon:'📅'},
+    {label:'Active Users', val: users.toLocaleString(), icon:'👥'},
+    {label:'New Users', val: newU.toLocaleString(), icon:'✨'},
+    {label:'Page Views', val: pvs.toLocaleString(), icon:'📄'},
+    {label:'Bounce Rate', val: (bounce*100).toFixed(1)+'%', icon:'↩'},
+    {label:'Avg Session', val: durFmt, icon:'⏱'}
+  ];
+  document.getElementById('ga4-kpis').innerHTML = kpis.map(k =>
+    `<div style="background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:.65rem .8rem;text-align:center">
+      <div style="font-size:1.1rem">${k.icon}</div>
+      <div style="font-size:1rem;font-weight:800;margin:.15rem 0">${k.val}</div>
+      <div style="font-size:.7rem;color:var(--muted)">${k.label}</div>
+    </div>`
+  ).join('');
+}
+function _ga4RenderChart(d) {
+  const rows = d.rows||[];
+  const labels = rows.map(r => { const dt=_ga4Dim(r,0); return dt.slice(4,6)+'/'+dt.slice(6); });
+  const sessions = rows.map(r => +_ga4Val(r,0));
+  const users = rows.map(r => +_ga4Val(r,1));
+  const ctx = document.getElementById('ga4-sessions-chart')?.getContext('2d');
+  if (!ctx) return;
+  if (_ga4Chart) _ga4Chart.destroy();
+  _ga4Chart = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        {label:'Sessions',data:sessions,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.12)',tension:.4,fill:true,pointRadius:2},
+        {label:'Users',data:users,borderColor:'#60a5fa',backgroundColor:'rgba(96,165,250,.08)',tension:.4,fill:true,pointRadius:2}
+      ]
+    },
+    options:{responsive:true,plugins:{legend:{labels:{font:{size:11},color:'var(--text2)'}}},scales:{x:{ticks:{font:{size:10},color:'var(--muted)'},grid:{display:false}},y:{ticks:{font:{size:10},color:'var(--muted)'},grid:{color:'rgba(128,128,128,.1)'}}}}
+  });
+}
+function _ga4RenderSources(d) {
+  const rows = d.rows||[];
+  const total = rows.reduce((s,r)=>s+(+_ga4Val(r,0)),0)||1;
+  document.getElementById('ga4-sources').innerHTML = rows.map(r => {
+    const ch = _ga4Dim(r,0)||'(other)', sess = +_ga4Val(r,0), pct = (sess/total*100).toFixed(0);
+    return `<div style="margin-bottom:.45rem">
+      <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:.15rem">
+        <span>${ch}</span><span style="color:var(--muted)">${sess.toLocaleString()} (${pct}%)</span>
+      </div>
+      <div style="height:5px;border-radius:3px;background:var(--border2)">
+        <div style="height:5px;border-radius:3px;background:var(--gold);width:${pct}%"></div>
+      </div></div>`;
+  }).join('') || '<div style="font-size:.78rem;color:var(--muted)">No data</div>';
+}
+function _ga4RenderPages(d) {
+  const rows = d.rows||[];
+  document.getElementById('ga4-top-pages').innerHTML = rows.map((r,i) => {
+    const path = _ga4Dim(r,0)||'/', pvs = +_ga4Val(r,0);
+    const label = path==='/'?'Home':path.replace(/^\//,'').slice(0,30);
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border-bottom:1px solid var(--border);font-size:.76rem">
+      <span style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:65%">${label}</span>
+      <span style="font-weight:700;color:var(--gold);white-space:nowrap">${pvs.toLocaleString()}</span>
+    </div>`;
+  }).join('') || '<div style="font-size:.78rem;color:var(--muted)">No data</div>';
+}
+function _ga4RenderDevices(d) {
+  const rows = d.rows||[];
+  const total = rows.reduce((s,r)=>s+(+_ga4Val(r,0)),0)||1;
+  const icons = {desktop:'🖥',mobile:'📱',tablet:'📟'};
+  document.getElementById('ga4-devices').innerHTML = rows.map(r => {
+    const dev = _ga4Dim(r,0), sess = +_ga4Val(r,0), pct = (sess/total*100).toFixed(0);
+    return `<div style="margin-bottom:.45rem">
+      <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:.15rem">
+        <span>${icons[dev]||'📱'} ${dev}</span><span style="color:var(--muted)">${pct}%</span>
+      </div>
+      <div style="height:5px;border-radius:3px;background:var(--border2)">
+        <div style="height:5px;border-radius:3px;background:#60a5fa;width:${pct}%"></div>
+      </div></div>`;
+  }).join('');
+}
+async function _ga4LoadRealtime() {
+  if (!_ga4Token) return;
+  try {
+    const d = await _ga4Run('runRealtimeReport', {
+      metrics:[{name:'activeUsers'}],
+      dimensions:[{name:'unifiedPagePathScreen'}],
+      limit:5
+    });
+    const total = d.rows?.reduce((s,r)=>s+(+_ga4Val(r,0)),0)||0;
+    document.getElementById('ga4-rt-count').textContent = total;
+    document.getElementById('ga4-rt-pages').innerHTML = (d.rows||[]).map(r => {
+      const path = _ga4Dim(r,0)||'/', n = +_ga4Val(r,0);
+      return `<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:.2rem 0;border-top:1px solid var(--border)">
+        <span style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;max-width:70%">${path==='/'?'Home':path.slice(1,28)}</span>
+        <span style="font-weight:700">${n}</span></div>`;
+    }).join('');
+  } catch(e) { /* silent */ }
+}
+function _ga4StartRealtime() {
+  _ga4LoadRealtime();
+  clearInterval(_ga4RtTimer);
+  _ga4RtTimer = setInterval(_ga4LoadRealtime, 60000);
+}
+
+// CSS for period buttons
 (function(){
-  var s=document.createElement('script');
-  s.src='search_complete.js';
-  s.async=true;
+  const s=document.createElement('style');
+  s.textContent='.ga4-period-btn{padding:.25rem .65rem;border-radius:5px;border:1px solid var(--border);background:none;color:var(--muted);font-size:.75rem;cursor:pointer}.ga4-period-btn.active{background:var(--gold);color:#fff;border-color:var(--gold)}';
   document.head.appendChild(s);
 })();
-</script>
-</body>
-</html>
+
+// On admin login, check if client ID is stored
+function _ga4On
