@@ -3,11 +3,7 @@
   "builds": [
     { "src": "**/*", "use": "@vercel/static" }
   ],
-  "routes": [
-    { "src": "/ontario-highest-paid-mayors", "dest": "/ontario-highest-paid-mayors.html" },
-    { "src": "/blog/ontario-highest-paid-mayors", "dest": "/blog/ontario-highest-paid-mayors.html" },
-    { "handle": "filesystem" }
-  ],
+  "cleanUrls": true,
   "headers": [
     {
       "source": "/(employer_data|search_complete)\\.js",
