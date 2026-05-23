@@ -3,7 +3,6 @@
   "builds": [
     { "src": "**/*", "use": "@vercel/static" }
   ],
-  "cleanUrls": true,
   "headers": [
     {
       "source": "/(employer_data|search_complete)\\.js",
