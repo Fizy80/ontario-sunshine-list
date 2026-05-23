@@ -6,6 +6,12 @@
       "use": "@vercel/static"
     }
   ],
+  "rewrites": [
+    {
+      "source": "/blog/ontario-highest-paid-mayors",
+      "destination": "/blog/ontario-highest-paid-mayors.html"
+    }
+  ],
   "headers": [
     {
       "source": "/(employer_data|search_complete)\\.js",
@@ -26,13 +32,4 @@
       ]
     },
     {
-      "source": "/(sitemap\\.xml|robots\\.txt)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=86400"
-        }
-      ]
-    }
-  ]
-}
+      "source": "/(sitemap\\.xml|rob
