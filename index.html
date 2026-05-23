@@ -1449,7 +1449,7 @@ function nav(pg) {
   pages.forEach(p => document.getElementById('pg-'+p).classList.toggle('show', p === pg));
   ['home','blog','orgs','admin'].forEach(p => document.getElementById('nb-'+p)?.classList.toggle('on', p === pg));
   if (pg === 'home' && !document.getElementById('board').children.length) renderHome();
-  if (pg === 'blog') renderBlog(_blogArticle);
+  if (pg === 'blog' && !document.getElementById('blog-content').dataset.built) renderBlog();
   if (pg === 'orgs' && !document.getElementById('orgs-list').children.length) renderOrgs();
   if (pg === 'admin') { if(_admIsAuthed()){ document.getElementById('adm-gate').style.display='none'; document.getElementById('adm-dash').style.display=''; _aTrack('admin_view'); renderAdmin(); } else { document.getElementById('adm-gate').style.display='flex'; document.getElementById('adm-dash').style.display='none'; setTimeout(()=>document.getElementById('adm-pw-input')?.focus(),50); } }
   const _pt={home:'Search Salaries',blog:'Blog',search:'Search Results',orgs:'Employers',about:'About',contact:'Contact',privacy:'Privacy Policy & Terms'};
@@ -1853,190 +1853,22 @@ function clearHomeFilters() {
 
 // -- Blog -----------------------------------------------------------------------
 let _blogCharts=[];
-let _blogArticle=null; // null = listing, 'police' | 'mayors' = article
-
-function renderBlog(article){
+function renderBlog(){
   const cont=document.getElementById('blog-content');
-  _blogCharts.forEach(c=>{try{c.destroy();}catch(e){}});
-  _blogCharts=[];
-  _blogArticle=article||null;
+  if(cont.dataset.built) return;
   cont.dataset.built='1';
-
-  if(!_blogArticle){
-    cont.innerHTML=_blogListingHtml();
-    return;
-  }
-  if(_blogArticle==='police'){
-    const allOrgs=window.EMPLOYER_IDX||[];
-    const policeOrgs=allOrgs.filter(o=>/\bpolice\b|ontario provincial police/i.test(o.name)).sort((a,b)=>b.total-a.total);
-    const totalPayroll=policeOrgs.reduce((s,o)=>s+o.total,0);
-    const totalCount=policeOrgs.reduce((s,o)=>s+o.count,0);
-    const totalAvg=totalCount>0?Math.round(totalPayroll/totalCount):0;
-    const forces=policeOrgs.length;
-    const top10=policeOrgs.slice(0,10);
-    const trendOrgs=policeOrgs.slice(0,5);
-    cont.innerHTML=_policeBlogHtml(policeOrgs,totalPayroll,totalCount,totalAvg,forces);
-    setTimeout(()=>_policeBlogCharts(top10,trendOrgs,policeOrgs),0);
-  }
-  if(_blogArticle==='mayors'){
-    cont.innerHTML=_mayorsBlogHtml();
-    setTimeout(()=>_mayorsBlogCharts(),0);
-  }
-}
-
-function _blogListingHtml(){
-  return '<div style="padding:.5rem 0 1rem">'
-    +'<h1 style="font-size:1.6rem;font-weight:900;letter-spacing:-.4px;margin-bottom:.35rem">Blog</h1>'
-    +'<p style="color:var(--muted);font-size:.9rem;margin-bottom:2rem">Data-driven analysis of Ontario\'s public sector salaries.</p>'
-    +'<div style="display:flex;flex-direction:column;gap:1.25rem">'
-
-    // Article card 2 — Mayors (newest first)
-    +'<div onclick="renderBlog(\'mayors\')" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.75rem;cursor:pointer;transition:.15s" onmouseover="this.style.borderColor=\'var(--gold)\'" onmouseout="this.style.borderColor=\'var(--border)\'">'
-    +'<div style="font-size:.72rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.5rem">May 2026 &nbsp;·&nbsp; Data Analysis</div>'
-    +'<h2 style="font-size:1.2rem;font-weight:800;color:var(--text);margin-bottom:.45rem;letter-spacing:-.2px">Ontario\'s Highest Paid Mayors (2025)</h2>'
-    +'<p style="font-size:.88rem;color:var(--text2);line-height:1.6;margin-bottom:.9rem">Markham\'s Frank Scarpitti tops the province at $308,179 — more than Toronto, Ottawa, or any other mayor. See the full rankings, salary histories, and the former party leaders who became city hall bosses.</p>'
-    +'<span style="font-size:.8rem;font-weight:700;color:var(--gold)">Read article →</span>'
-    +'</div>'
-
-    // Article card 1 — Police
-    +'<div onclick="renderBlog(\'police\')" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.75rem;cursor:pointer;transition:.15s" onmouseover="this.style.borderColor=\'var(--gold)\'" onmouseout="this.style.borderColor=\'var(--border)\'">'
-    +'<div style="font-size:.72rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.5rem">May 2026 &nbsp;·&nbsp; Data Analysis</div>'
-    +'<h2 style="font-size:1.2rem;font-weight:800;color:var(--text);margin-bottom:.45rem;letter-spacing:-.2px">Ontario\'s Police Payroll: Inside the Sunshine List</h2>'
-    +'<p style="font-size:.88rem;color:var(--text2);line-height:1.6;margin-bottom:.9rem">How much do Ontario\'s officers earn — and how fast have salaries grown? An analysis of every police force on the 2025 Sunshine List, from the OPP to local municipal services.</p>'
-    +'<span style="font-size:.8rem;font-weight:700;color:var(--gold)">Read article →</span>'
-    +'</div>'
-
-    +'</div></div>';
-}
-
-function _mayorsBlogHtml(){
-  const f$=v=>'$'+Math.round(v).toLocaleString('en-CA');
-  const mayors=[
-    {name:'Frank Scarpitti',city:'City of Markham',sal:308179,badge:'21 yrs'},
-    {name:'Olivia Chow',city:'City of Toronto',sal:240349},
-    {name:'Andrew Dilkens',city:'City of Windsor',sal:218949},
-    {name:'Steven Del Duca',city:'City of Vaughan',sal:218545,badge:'Fmr. Liberal Leader',badgeType:'pol'},
-    {name:'Marianne Meed Ward',city:'City of Burlington',sal:214252},
-    {name:'Mark Sutcliffe',city:'City of Ottawa',sal:213921},
-    {name:'Andrea Horwath',city:'City of Hamilton',sal:212764,badge:'Fmr. NDP Leader',badgeType:'pol'},
-    {name:'Elizabeth Roy',city:'Town of Whitby',sal:210674,badge:'↑ Rising',badgeType:'new'},
-    {name:'Rob Burton',city:'Town of Oakville',sal:210448},
-    {name:'David West',city:'City of Richmond Hill',sal:210265},
-    {name:'Adrian Foster',city:'Municipality of Clarington',sal:207233},
-    {name:'Shaun Collier',city:'Town of Ajax',sal:205161},
-    {name:'John Taylor',city:'Town of Newmarket',sal:196159},
-  ];
-  const badgeStyle={
-    '':' style="display:none"',
-    'pol':' style="display:inline-block;font-size:.62rem;font-weight:700;padding:.12rem .4rem;border-radius:50px;text-transform:uppercase;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);color:var(--blue);margin-left:.35rem;vertical-align:middle"',
-    'new':' style="display:inline-block;font-size:.62rem;font-weight:700;padding:.12rem .4rem;border-radius:50px;text-transform:uppercase;background:rgba(21,128,61,.1);border:1px solid rgba(21,128,61,.3);color:var(--green);margin-left:.35rem;vertical-align:middle"',
-    'default':' style="display:inline-block;font-size:.62rem;font-weight:700;padding:.12rem .4rem;border-radius:50px;text-transform:uppercase;background:rgba(196,125,10,.1);border:1px solid rgba(196,125,10,.3);color:var(--gold);margin-left:.35rem;vertical-align:middle"'
-  };
-  const rows=mayors.map((m,i)=>{
-    const bt=m.badgeType||'default';
-    const bdg=m.badge?('<span'+badgeStyle[bt]+'>'+m.badge+'</span>'):'';
-    return '<tr style="border-bottom:1px solid var(--border)">'
-      +'<td style="padding:.6rem .7rem;font-size:.8rem;color:var(--muted);font-weight:700">'+(i+1)+'</td>'
-      +'<td style="padding:.6rem .7rem;font-weight:700;color:var(--text)">'+m.name+bdg+'</td>'
-      +'<td style="padding:.6rem .7rem;color:var(--text2);font-size:.84rem">'+m.city+'</td>'
-      +'<td style="padding:.6rem .7rem;font-weight:800;color:var(--gold);text-align:right;white-space:nowrap">'+f$(m.sal)+'</td>'
-      +'</tr>';
-  }).join('');
-
-  return '<article class="blog-post">'
-    +'<button onclick="renderBlog(null)" style="background:none;border:none;color:var(--muted);font-size:.84rem;cursor:pointer;padding:0;margin-bottom:1.25rem;font-family:inherit">← All articles</button>'
-    +'<div class="blog-post-meta">May 2026 &nbsp;·&nbsp; Data Analysis &nbsp;·&nbsp; Ontario Sunshine List</div>'
-    +'<h1 class="blog-post-title">Ontario\'s Highest Paid Mayors (2025)</h1>'
-    +'<p class="blog-post-byline">Markham\'s Frank Scarpitti tops the province at $308,179 — more than Toronto, Ottawa, or any other mayor in Ontario.</p>'
-
-    +'<div class="blog-hero-stats">'
-    +'<div class="bhs-pill"><span class="bhs-val">$308,179</span><span class="bhs-lbl">Highest mayoral salary (Markham)</span></div>'
-    +'<div class="bhs-pill"><span class="bhs-val">13</span><span class="bhs-lbl">Mayors on 2025 Sunshine List</span></div>'
-    +'<div class="bhs-pill"><span class="bhs-val">21 yrs</span><span class="bhs-lbl">Scarpitti consecutive appearances</span></div>'
-    +'<div class="bhs-pill"><span class="bhs-val">+195%</span><span class="bhs-lbl">Scarpitti salary growth since 2004</span></div>'
-    +'</div>'
-
-    +'<p class="blog-body">Every year Ontario\'s Public Sector Salary Disclosure Act requires municipalities to publish the names and salaries of employees earning $100,000 or more. In 2025, 13 mayors cleared the threshold. The list reveals some surprises: Markham\'s mayor earns more than Toronto\'s, two former provincial party leaders appear, and one mayor has been on the list every year since 2004.</p>'
-
-    +'<h2 class="blog-section-title">2025 Rankings: Ontario\'s Highest Paid Mayors</h2>'
-    +'<div style="overflow-x:auto;margin:1.1rem 0 .35rem">'
-    +'<table style="width:100%;border-collapse:collapse;font-size:.88rem">'
-    +'<thead><tr style="background:var(--surface2);border-bottom:2px solid var(--border2)">'
-    +'<th style="padding:.55rem .7rem;text-align:left;font-size:.71rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">#</th>'
-    +'<th style="padding:.55rem .7rem;text-align:left;font-size:.71rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">Mayor</th>'
-    +'<th style="padding:.55rem .7rem;text-align:left;font-size:.71rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">Municipality</th>'
-    +'<th style="padding:.55rem .7rem;text-align:right;font-size:.71rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">2025 Salary</th>'
-    +'</tr></thead>'
-    +'<tbody>'+rows+'</tbody>'
-    +'</table></div>'
-    +'<p style="font-size:.73rem;color:var(--muted);font-style:italic;margin-bottom:1.5rem">Source: Ontario Sunshine List 2025. All salaries in Canadian dollars.</p>'
-
-    +'<div class="blog-chart-wrap" style="height:390px"><canvas id="bc-mayors"></canvas></div>'
-    +'<p class="blog-chart-caption">2025 Sunshine List salary for Ontario mayors. Markham (gold) earns $67,830 more than #2 Toronto. Hover for exact figures.</p>'
-
-    +'<h2 class="blog-section-title">Frank Scarpitti: Ontario\'s Highest Paid Mayor — By a Long Way</h2>'
-    +'<p class="blog-body">The gap at the top is striking. Frank Scarpitti, Markham\'s mayor since 2003, earns <strong>$308,179</strong> — nearly $68,000 more than Olivia Chow in Toronto, a city roughly 10 times Markham\'s size. Scarpitti first appeared on the Sunshine List in 2004 at <strong>$104,366</strong>. Over 21 consecutive years his salary has grown by <strong>195%</strong> — nearly tripling while the Bank of Canada\'s inflation target averaged 2% annually.</p>'
-
-    +'<div class="blog-pullquote">"Scarpitti\'s 2025 salary of $308,179 is nearly three times what he earned when he first appeared on the Sunshine List in 2004 — higher than every other municipal mayor in the province."</div>'
-
-    +'<div class="blog-chart-wrap" style="height:265px"><canvas id="bc-scarpitti"></canvas></div>'
-    +'<p class="blog-chart-caption">Frank Scarpitti\'s disclosed salary, 2004–2025. Markham became a City in 2012; salary growth accelerated in the years following.</p>'
-
-    +'<h2 class="blog-section-title">Two Former Party Leaders, Now Mayors</h2>'
-    +'<p class="blog-body">Perhaps the most politically notable names are <strong>Steven Del Duca</strong> (Vaughan, $218,545) and <strong>Andrea Horwath</strong> (Hamilton, $212,764) — both former provincial party leaders who moved to municipal politics after their respective election losses. Del Duca led the Ontario Liberals in 2022; Horwath led the NDP for 16 years. Both have seen steady salary growth since taking mayoral office.</p>'
-
-    +'<h2 class="blog-section-title">Why Does Markham Pay More Than Toronto?</h2>'
-    +'<p class="blog-body">Toronto has a population of roughly 2.9 million; Markham has around 380,000. Yet Markham\'s mayor earns <strong>$67,830 more</strong>. The answer lies in how municipalities independently set mayoral compensation, combined with the compounding effects of 21 years of step increases and periodic compensation reviews. Long tenure is the single strongest predictor of a high mayoral salary in Ontario.</p>'
-
-    +'<div class="blog-kpi-row">'
-    +'<div class="blog-kpi"><span class="kv">21 yrs</span><span class="kl">Scarpitti consecutive years on the Sunshine List (2004–2025)</span></div>'
-    +'<div class="blog-kpi"><span class="kv">+195%</span><span class="kl">Scarpitti salary growth ($104K → $308K)</span></div>'
-    +'<div class="blog-kpi"><span class="kv">+99%</span><span class="kl">Dilkens salary growth since 2017 ($110K → $219K)</span></div>'
-    +'<div class="blog-kpi"><span class="kv">$196K</span><span class="kl">Lowest entry salary among 2025\'s top 13 mayors</span></div>'
-    +'</div>'
-
-    +'<p class="blog-body">Want to explore individual mayor salary records? <a href="/" onclick="nav(\'home\');return false" style="color:var(--gold)">Search the full Sunshine List</a> for any Ontario public employee from 1996 to 2025.</p>'
-
-    +'<div class="blog-footer-note">Data sourced from the <a href="https://www.ontario.ca/page/public-sector-salary-disclosure" target="_blank">Ontario Public Sector Salary Disclosure Act</a> (Sunshine List), 1996–2025. Only employees earning $100,000 or more are disclosed. All figures in Canadian dollars. &nbsp;·&nbsp; <a href="/blog/ontario-highest-paid-mayors" target="_blank" style="color:var(--muted)">View standalone article →</a></div>'
-    +'</article>';
-}
-
-function _mayorsBlogCharts(){
-  const G='rgba(196,125,10,', B='rgba(59,130,246,';
-  const names=['Frank Scarpitti','Olivia Chow','Andrew Dilkens','Steven Del Duca','Marianne Meed Ward','Mark Sutcliffe','Andrea Horwath','Elizabeth Roy','Rob Burton','David West','Adrian Foster','Shaun Collier','John Taylor'];
-  const sals=[308179,240349,218949,218545,214252,213921,212764,210674,210448,210265,207233,205161,196159];
-  const bg=sals.map((_,i)=>i===0?G+'0.82)':B+'0.52)');
-  const bd=bg.map(c=>c.replace(/[\d.]+\)$/,'1)'));
-
-  const el1=document.getElementById('bc-mayors');
-  if(el1){
-    _blogCharts.push(new Chart(el1.getContext('2d'),{
-      type:'bar',
-      data:{labels:names,datasets:[{label:'2025 Salary',data:sals,backgroundColor:bg,borderColor:bd,borderWidth:1,borderRadius:4}]},
-      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' $'+Math.round(c.raw).toLocaleString('en-CA')}}},
-        scales:{
-          x:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#7a90b0',font:{size:9.5},callback:v=>'$'+Math.round(v/1000)+'K'}},
-          y:{ticks:{color:'var(--text)',font:{size:10.5}}}
-        }}
-    }));
-  }
-
-  const scYears=[2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025];
-  const scSals=[104366,106020,111217,148200,164369,163814,165781,173937,176451,178701,191997,187130,187882,195374,246520,239694,261900,253416,268470,278473,283899,308179];
-  const el2=document.getElementById('bc-scarpitti');
-  if(el2){
-    _blogCharts.push(new Chart(el2.getContext('2d'),{
-      type:'line',
-      data:{labels:scYears,datasets:[{label:'Frank Scarpitti — Markham',data:scSals,borderColor:'#c47d0a',backgroundColor:'rgba(196,125,10,0.08)',borderWidth:2.5,pointRadius:3,pointBackgroundColor:'#c47d0a',fill:true,tension:.35}]},
-      options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' $'+Math.round(c.raw).toLocaleString('en-CA')}}},
-        scales:{
-          x:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#7a90b0',font:{size:9}}},
-          y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#7a90b0',font:{size:9},callback:v=>'$'+Math.round(v/1000)+'K'}}
-        }}
-    }));
-  }
+  const allOrgs=window.EMPLOYER_IDX||[];
+  const policeOrgs=allOrgs
+    .filter(o=>/\bpolice\b|ontario provincial police/i.test(o.name))
+    .sort((a,b)=>b.total-a.total);
+  const totalPayroll=policeOrgs.reduce((s,o)=>s+o.total,0);
+  const totalCount=policeOrgs.reduce((s,o)=>s+o.count,0);
+  const totalAvg=totalCount>0?Math.round(totalPayroll/totalCount):0;
+  const forces=policeOrgs.length;
+  const top10=policeOrgs.slice(0,10);
+  const trendOrgs=policeOrgs.slice(0,5);
+  cont.innerHTML=_policeBlogHtml(policeOrgs,totalPayroll,totalCount,totalAvg,forces);
+  setTimeout(()=>_policeBlogCharts(top10,trendOrgs,policeOrgs),0);
 }
 
 function _shortForce(n){
@@ -2839,4 +2671,340 @@ function _renderOrgEmployees(recs,q,catF){
     list.slice(0,300).map(r=>{
       const yb=r[4]!=null?`<div class="erow-yoy ${r[4]>=0?'pos':'neg'}">${r[4]>=0?'+':''}${r[4]}%</div>`:'';
       return `<div class="erow" onclick="openEmp('${r[3]}')">
-        <div><div class="erow-name">${r[0]}</div><div class="erow-title">${r[2]
+        <div><div class="erow-name">${r[0]}</div><div class="erow-title">${r[2]||'—'}</div></div>
+        <div class="erow-right"><div class="erow-sal">${f$(r[1])}</div>${yb}</div>
+      </div>`;
+    }).join('')+'</div>'+(list.length>300?`<div style="text-align:center;padding:.6rem;font-size:.75rem;color:var(--muted)">${list.length.toLocaleString()} total \xb7 showing top 300</div>`:'');
+}
+
+// ── Cookie consent ──────────────────────────────────────────────────────────
+function _cookieConsent(choice) {
+  try { localStorage.setItem('cookie_consent', choice); } catch(e){}
+  _hideCookieBanner();
+}
+function _hideCookieBanner() {
+  const b = document.getElementById('cookie-banner');
+  if (b) b.style.display = 'none';
+}
+(function() {
+  let consent;
+  try { consent = localStorage.getItem('cookie_consent'); } catch(e){}
+  if (!consent) {
+    const b = document.getElementById('cookie-banner');
+    if (b) b.style.display = 'flex';
+  }
+})();
+
+// Safety net: if polling missed EMP_RECORDS, catch it at DOMContentLoaded
+document.addEventListener('DOMContentLoaded', function() {
+  if (window.EMP_RECORDS && !home2025) {
+    _buildHome2025();
+    if (document.getElementById('pg-home').classList.contains('show')) renderHome(true);
+  }
+});
+
+// Re-render orgs page if employer_data.js finished loading after nav('orgs') already ran
+window.addEventListener('load', function() {
+  if (window.EMPLOYER_IDX && window.EMPLOYER_IDX.length &&
+      document.getElementById('pg-orgs').classList.contains('show')) {
+    document.getElementById('orgs-list').innerHTML = '';
+    renderOrgs();
+  }
+});
+
+// ── Browser back/forward ──────────────────────────────────────────────────────
+window.addEventListener('popstate', function(e) {
+  const st = e.state;
+  _skipHistory = true;
+  if (st) {
+    if (st.p === 'emp' && st.id) openEmp(st.id);
+    else if (st.p === 'org' && st.id) openOrg(st.id);
+    else nav(st.p || 'home');
+  } else {
+    // No state — read from hash
+    const h = location.hash.slice(1);
+    if (h.startsWith('emp/')) openEmp(h.slice(4));
+    else if (h.startsWith('org/')) openOrg(h.slice(4));
+    else nav(h || 'home');
+  }
+  _skipHistory = false;
+});
+
+
+// Boot: initial navigation from URL (don't push state - we're already here)
+_skipHistory=true;
+const _qs=new URLSearchParams(location.search).get('q')||'';
+const h0=location.hash.slice(1);
+if(h0.startsWith('emp/')) openEmp(h0.slice(4));
+else if(h0.startsWith('org/')) openOrg(h0.slice(4));
+else if(_qs){
+  nav('search');
+  const _si2=document.getElementById('si');
+  if(_si2){_si2.value=_qs; setTimeout(()=>doSearch(_qs),100);}
+} else nav(h0||'home');
+
+// ── GA4 Analytics Integration ──────────────────────────────────────
+const _GA4_PROP = '228779632';
+const _GA4_CID_KEY = '_sl_ga4_cid';
+const _GA4_CLIENT_ID = '598560026853-0bnecm8vamrs2i63j5u4ulhjlo0m8088.apps.googleusercontent.com';
+let _ga4Token = null;
+let _ga4Period = 7;
+let _ga4RtTimer = null;
+let _ga4Chart = null;
+
+function _ga4GetClientId() {
+  return _GA4_CLIENT_ID;
+}
+function _ga4SaveClientId() {
+  const v = (document.getElementById('ga4-client-id-input')?.value||'').trim();
+  if (!v) return;
+  try { localStorage.setItem(_GA4_CID_KEY, v); } catch(e){}
+  document.getElementById('ga4-setup').style.display = 'none';
+  document.getElementById('ga4-signin-btn').style.display = '';
+}
+function _ga4SetStatus(txt, connected) {
+  const dot = document.getElementById('ga4-status-dot');
+  const el = document.getElementById('ga4-status-txt');
+  if (el) el.textContent = txt;
+  if (dot) { dot.style.display = connected ? '' : 'none'; dot.style.background = connected ? '#22c55e' : '#e74c3c'; }
+}
+function _ga4ShowError(msg) {
+  const el = document.getElementById('ga4-error');
+  if (el) { el.textContent = '⚠ ' + msg; el.style.display = ''; }
+}
+function _ga4SignIn() {
+  const cid = _ga4GetClientId();
+  if (!cid) {
+    document.getElementById('ga4-setup').style.display = '';
+    return;
+  }
+  try {
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: cid,
+      scope: 'https://www.googleapis.com/auth/analytics.readonly',
+      callback: (resp) => {
+        if (resp.error) { _ga4ShowError('Sign-in failed: ' + resp.error); return; }
+        _ga4Token = resp.access_token;
+        document.getElementById('ga4-signin-btn').style.display = 'none';
+        document.getElementById('ga4-signout-btn').style.display = '';
+        document.getElementById('ga4-panels').style.display = '';
+        document.getElementById('ga4-error').style.display = 'none';
+        _ga4SetStatus('Connected', true);
+        _loadGA4Data();
+        _ga4StartRealtime();
+      }
+    });
+    client.requestAccessToken();
+  } catch(e) {
+    _ga4ShowError('Google Identity Services not loaded yet. Try again in a moment.');
+  }
+}
+function _ga4SignOut() {
+  _ga4Token = null;
+  clearInterval(_ga4RtTimer);
+  document.getElementById('ga4-signin-btn').style.display = '';
+  document.getElementById('ga4-signout-btn').style.display = 'none';
+  document.getElementById('ga4-panels').style.display = 'none';
+  _ga4SetStatus('', false);
+}
+function _ga4SetPeriod(days) {
+  _ga4Period = days;
+  document.querySelectorAll('.ga4-period-btn').forEach(b => {
+    b.classList.toggle('active', +b.dataset.days === days);
+  });
+  _loadGA4Data();
+}
+async function _ga4Run(endpoint, body) {
+  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${_GA4_PROP}:${endpoint}`;
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + _ga4Token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) {
+    const e = await r.json().catch(()=>({error:{message:r.statusText}}));
+    throw new Error(e?.error?.message || r.statusText);
+  }
+  return r.json();
+}
+function _ga4Val(row, idx) { return row?.metricValues?.[idx]?.value||'0'; }
+function _ga4Dim(row, idx) { return row?.dimensionValues?.[idx]?.value||''; }
+
+async function _loadGA4Data() {
+  if (!_ga4Token) return;
+  _ga4SetStatus('Loading…', true);
+  try {
+    const end = 'today', start = `${_ga4Period}daysAgo`;
+    // Parallel requests
+    const [summary, byDate, sources, pages, devices] = await Promise.all([
+      _ga4Run('runReport', {
+        dateRanges:[{startDate:start,endDate:end}],
+        metrics:[{name:'sessions'},{name:'activeUsers'},{name:'newUsers'},{name:'screenPageViews'},{name:'bounceRate'},{name:'averageSessionDuration'}]
+      }),
+      _ga4Run('runReport', {
+        dateRanges:[{startDate:start,endDate:end}],
+        dimensions:[{name:'date'}],
+        metrics:[{name:'sessions'},{name:'activeUsers'}],
+        orderBys:[{dimension:{dimensionName:'date'}}]
+      }),
+      _ga4Run('runReport', {
+        dateRanges:[{startDate:start,endDate:end}],
+        dimensions:[{name:'sessionDefaultChannelGroup'}],
+        metrics:[{name:'sessions'}],
+        orderBys:[{metric:{metricName:'sessions'},desc:true}],
+        limit:6
+      }),
+      _ga4Run('runReport', {
+        dateRanges:[{startDate:start,endDate:end}],
+        dimensions:[{name:'pagePath'}],
+        metrics:[{name:'screenPageViews'}],
+        orderBys:[{metric:{metricName:'screenPageViews'},desc:true}],
+        limit:8
+      }),
+      _ga4Run('runReport', {
+        dateRanges:[{startDate:start,endDate:end}],
+        dimensions:[{name:'deviceCategory'}],
+        metrics:[{name:'sessions'}],
+        orderBys:[{metric:{metricName:'sessions'},desc:true}]
+      })
+    ]);
+    _ga4RenderKPIs(summary);
+    _ga4RenderChart(byDate);
+    _ga4RenderSources(sources);
+    _ga4RenderPages(pages);
+    _ga4RenderDevices(devices);
+    _ga4SetStatus(`Updated ${new Date().toLocaleTimeString()}`, true);
+  } catch(e) {
+    _ga4ShowError(e.message);
+    _ga4SetStatus('Error', false);
+  }
+}
+function _ga4RenderKPIs(d) {
+  const r = d.rows?.[0];
+  if (!r) return;
+  const sess = +_ga4Val(r,0), users = +_ga4Val(r,1), newU = +_ga4Val(r,2),
+        pvs = +_ga4Val(r,3), bounce = +_ga4Val(r,4), dur = +_ga4Val(r,5);
+  const durFmt = dur >= 60 ? `${Math.floor(dur/60)}m ${Math.round(dur%60)}s` : `${Math.round(dur)}s`;
+  const kpis = [
+    {label:'Sessions', val: sess.toLocaleString(), icon:'📅'},
+    {label:'Active Users', val: users.toLocaleString(), icon:'👥'},
+    {label:'New Users', val: newU.toLocaleString(), icon:'✨'},
+    {label:'Page Views', val: pvs.toLocaleString(), icon:'📄'},
+    {label:'Bounce Rate', val: (bounce*100).toFixed(1)+'%', icon:'↩'},
+    {label:'Avg Session', val: durFmt, icon:'⏱'}
+  ];
+  document.getElementById('ga4-kpis').innerHTML = kpis.map(k =>
+    `<div style="background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:.65rem .8rem;text-align:center">
+      <div style="font-size:1.1rem">${k.icon}</div>
+      <div style="font-size:1rem;font-weight:800;margin:.15rem 0">${k.val}</div>
+      <div style="font-size:.7rem;color:var(--muted)">${k.label}</div>
+    </div>`
+  ).join('');
+}
+function _ga4RenderChart(d) {
+  const rows = d.rows||[];
+  const labels = rows.map(r => { const dt=_ga4Dim(r,0); return dt.slice(4,6)+'/'+dt.slice(6); });
+  const sessions = rows.map(r => +_ga4Val(r,0));
+  const users = rows.map(r => +_ga4Val(r,1));
+  const ctx = document.getElementById('ga4-sessions-chart')?.getContext('2d');
+  if (!ctx) return;
+  if (_ga4Chart) _ga4Chart.destroy();
+  _ga4Chart = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        {label:'Sessions',data:sessions,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.12)',tension:.4,fill:true,pointRadius:2},
+        {label:'Users',data:users,borderColor:'#60a5fa',backgroundColor:'rgba(96,165,250,.08)',tension:.4,fill:true,pointRadius:2}
+      ]
+    },
+    options:{responsive:true,plugins:{legend:{labels:{font:{size:11},color:'var(--text2)'}}},scales:{x:{ticks:{font:{size:10},color:'var(--muted)'},grid:{display:false}},y:{ticks:{font:{size:10},color:'var(--muted)'},grid:{color:'rgba(128,128,128,.1)'}}}}
+  });
+}
+function _ga4RenderSources(d) {
+  const rows = d.rows||[];
+  const total = rows.reduce((s,r)=>s+(+_ga4Val(r,0)),0)||1;
+  document.getElementById('ga4-sources').innerHTML = rows.map(r => {
+    const ch = _ga4Dim(r,0)||'(other)', sess = +_ga4Val(r,0), pct = (sess/total*100).toFixed(0);
+    return `<div style="margin-bottom:.45rem">
+      <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:.15rem">
+        <span>${ch}</span><span style="color:var(--muted)">${sess.toLocaleString()} (${pct}%)</span>
+      </div>
+      <div style="height:5px;border-radius:3px;background:var(--border2)">
+        <div style="height:5px;border-radius:3px;background:var(--gold);width:${pct}%"></div>
+      </div></div>`;
+  }).join('') || '<div style="font-size:.78rem;color:var(--muted)">No data</div>';
+}
+function _ga4RenderPages(d) {
+  const rows = d.rows||[];
+  document.getElementById('ga4-top-pages').innerHTML = rows.map((r,i) => {
+    const path = _ga4Dim(r,0)||'/', pvs = +_ga4Val(r,0);
+    const label = path==='/'?'Home':path.replace(/^\//,'').slice(0,30);
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border-bottom:1px solid var(--border);font-size:.76rem">
+      <span style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:65%">${label}</span>
+      <span style="font-weight:700;color:var(--gold);white-space:nowrap">${pvs.toLocaleString()}</span>
+    </div>`;
+  }).join('') || '<div style="font-size:.78rem;color:var(--muted)">No data</div>';
+}
+function _ga4RenderDevices(d) {
+  const rows = d.rows||[];
+  const total = rows.reduce((s,r)=>s+(+_ga4Val(r,0)),0)||1;
+  const icons = {desktop:'🖥',mobile:'📱',tablet:'📟'};
+  document.getElementById('ga4-devices').innerHTML = rows.map(r => {
+    const dev = _ga4Dim(r,0), sess = +_ga4Val(r,0), pct = (sess/total*100).toFixed(0);
+    return `<div style="margin-bottom:.45rem">
+      <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:.15rem">
+        <span>${icons[dev]||'📱'} ${dev}</span><span style="color:var(--muted)">${pct}%</span>
+      </div>
+      <div style="height:5px;border-radius:3px;background:var(--border2)">
+        <div style="height:5px;border-radius:3px;background:#60a5fa;width:${pct}%"></div>
+      </div></div>`;
+  }).join('');
+}
+async function _ga4LoadRealtime() {
+  if (!_ga4Token) return;
+  try {
+    const d = await _ga4Run('runRealtimeReport', {
+      metrics:[{name:'activeUsers'}],
+      dimensions:[{name:'unifiedPagePathScreen'}],
+      limit:5
+    });
+    const total = d.rows?.reduce((s,r)=>s+(+_ga4Val(r,0)),0)||0;
+    document.getElementById('ga4-rt-count').textContent = total;
+    document.getElementById('ga4-rt-pages').innerHTML = (d.rows||[]).map(r => {
+      const path = _ga4Dim(r,0)||'/', n = +_ga4Val(r,0);
+      return `<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:.2rem 0;border-top:1px solid var(--border)">
+        <span style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;max-width:70%">${path==='/'?'Home':path.slice(1,28)}</span>
+        <span style="font-weight:700">${n}</span></div>`;
+    }).join('');
+  } catch(e) { /* silent */ }
+}
+function _ga4StartRealtime() {
+  _ga4LoadRealtime();
+  clearInterval(_ga4RtTimer);
+  _ga4RtTimer = setInterval(_ga4LoadRealtime, 60000);
+}
+
+// CSS for period buttons
+(function(){
+  const s=document.createElement('style');
+  s.textContent='.ga4-period-btn{padding:.25rem .65rem;border-radius:5px;border:1px solid var(--border);background:none;color:var(--muted);font-size:.75rem;cursor:pointer}.ga4-period-btn.active{background:var(--gold);color:#fff;border-color:var(--gold)}';
+  document.head.appendChild(s);
+})();
+
+// On admin login, check if client ID is stored
+function _ga4OnAdminLoad() {
+  _ga4SetStatus('Ready — click Connect GA4', false);
+}
+
+_skipHistory=false;
+// Load full search index in background for history and search
+(function(){
+  var s=document.createElement('script');
+  s.src='search_complete.js';
+  s.async=true;
+  document.head.appendChild(s);
+})();
+</script>
+</body>
+</html>
