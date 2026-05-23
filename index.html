@@ -1449,7 +1449,7 @@ function nav(pg) {
   pages.forEach(p => document.getElementById('pg-'+p).classList.toggle('show', p === pg));
   ['home','blog','orgs','admin'].forEach(p => document.getElementById('nb-'+p)?.classList.toggle('on', p === pg));
   if (pg === 'home' && !document.getElementById('board').children.length) renderHome();
-  if (pg === 'blog' && !document.getElementById('blog-content').dataset.built) renderBlog();
+  if (pg === 'blog') renderBlog(_blogArticle);
   if (pg === 'orgs' && !document.getElementById('orgs-list').children.length) renderOrgs();
   if (pg === 'admin') { if(_admIsAuthed()){ document.getElementById('adm-gate').style.display='none'; document.getElementById('adm-dash').style.display=''; _aTrack('admin_view'); renderAdmin(); } else { document.getElementById('adm-gate').style.display='flex'; document.getElementById('adm-dash').style.display='none'; setTimeout(()=>document.getElementById('adm-pw-input')?.focus(),50); } }
   const _pt={home:'Search Salaries',blog:'Blog',search:'Search Results',orgs:'Employers',about:'About',contact:'Contact',privacy:'Privacy Policy & Terms'};
@@ -1853,22 +1853,190 @@ function clearHomeFilters() {
 
 // -- Blog -----------------------------------------------------------------------
 let _blogCharts=[];
-function renderBlog(){
+let _blogArticle=null; // null = listing, 'police' | 'mayors' = article
+
+function renderBlog(article){
   const cont=document.getElementById('blog-content');
-  if(cont.dataset.built) return;
+  _blogCharts.forEach(c=>{try{c.destroy();}catch(e){}});
+  _blogCharts=[];
+  _blogArticle=article||null;
   cont.dataset.built='1';
-  const allOrgs=window.EMPLOYER_IDX||[];
-  const policeOrgs=allOrgs
-    .filter(o=>/\bpolice\b|ontario provincial police/i.test(o.name))
-    .sort((a,b)=>b.total-a.total);
-  const totalPayroll=policeOrgs.reduce((s,o)=>s+o.total,0);
-  const totalCount=policeOrgs.reduce((s,o)=>s+o.count,0);
-  const totalAvg=totalCount>0?Math.round(totalPayroll/totalCount):0;
-  const forces=policeOrgs.length;
-  const top10=policeOrgs.slice(0,10);
-  const trendOrgs=policeOrgs.slice(0,5);
-  cont.innerHTML=_policeBlogHtml(policeOrgs,totalPayroll,totalCount,totalAvg,forces);
-  setTimeout(()=>_policeBlogCharts(top10,trendOrgs,policeOrgs),0);
+
+  if(!_blogArticle){
+    cont.innerHTML=_blogListingHtml();
+    return;
+  }
+  if(_blogArticle==='police'){
+    const allOrgs=window.EMPLOYER_IDX||[];
+    const policeOrgs=allOrgs.filter(o=>/\bpolice\b|ontario provincial police/i.test(o.name)).sort((a,b)=>b.total-a.total);
+    const totalPayroll=policeOrgs.reduce((s,o)=>s+o.total,0);
+    const totalCount=policeOrgs.reduce((s,o)=>s+o.count,0);
+    const totalAvg=totalCount>0?Math.round(totalPayroll/totalCount):0;
+    const forces=policeOrgs.length;
+    const top10=policeOrgs.slice(0,10);
+    const trendOrgs=policeOrgs.slice(0,5);
+    cont.innerHTML=_policeBlogHtml(policeOrgs,totalPayroll,totalCount,totalAvg,forces);
+    setTimeout(()=>_policeBlogCharts(top10,trendOrgs,policeOrgs),0);
+  }
+  if(_blogArticle==='mayors'){
+    cont.innerHTML=_mayorsBlogHtml();
+    setTimeout(()=>_mayorsBlogCharts(),0);
+  }
+}
+
+function _blogListingHtml(){
+  return '<div style="padding:.5rem 0 1rem">'
+    +'<h1 style="font-size:1.6rem;font-weight:900;letter-spacing:-.4px;margin-bottom:.35rem">Blog</h1>'
+    +'<p style="color:var(--muted);font-size:.9rem;margin-bottom:2rem">Data-driven analysis of Ontario\'s public sector salaries.</p>'
+    +'<div style="display:flex;flex-direction:column;gap:1.25rem">'
+
+    // Article card 2 — Mayors (newest first)
+    +'<div onclick="renderBlog(\'mayors\')" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.75rem;cursor:pointer;transition:.15s" onmouseover="this.style.borderColor=\'var(--gold)\'" onmouseout="this.style.borderColor=\'var(--border)\'">'
+    +'<div style="font-size:.72rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.5rem">May 2026 &nbsp;·&nbsp; Data Analysis</div>'
+    +'<h2 style="font-size:1.2rem;font-weight:800;color:var(--text);margin-bottom:.45rem;letter-spacing:-.2px">Ontario\'s Highest Paid Mayors (2025)</h2>'
+    +'<p style="font-size:.88rem;color:var(--text2);line-height:1.6;margin-bottom:.9rem">Markham\'s Frank Scarpitti tops the province at $308,179 — more than Toronto, Ottawa, or any other mayor. See the full rankings, salary histories, and the former party leaders who became city hall bosses.</p>'
+    +'<span style="font-size:.8rem;font-weight:700;color:var(--gold)">Read article →</span>'
+    +'</div>'
+
+    // Article card 1 — Police
+    +'<div onclick="renderBlog(\'police\')" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.75rem;cursor:pointer;transition:.15s" onmouseover="this.style.borderColor=\'var(--gold)\'" onmouseout="this.style.borderColor=\'var(--border)\'">'
+    +'<div style="font-size:.72rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.5rem">May 2026 &nbsp;·&nbsp; Data Analysis</div>'
+    +'<h2 style="font-size:1.2rem;font-weight:800;color:var(--text);margin-bottom:.45rem;letter-spacing:-.2px">Ontario\'s Police Payroll: Inside the Sunshine List</h2>'
+    +'<p style="font-size:.88rem;color:var(--text2);line-height:1.6;margin-bottom:.9rem">How much do Ontario\'s officers earn — and how fast have salaries grown? An analysis of every police force on the 2025 Sunshine List, from the OPP to local municipal services.</p>'
+    +'<span style="font-size:.8rem;font-weight:700;color:var(--gold)">Read article →</span>'
+    +'</div>'
+
+    +'</div></div>';
+}
+
+function _mayorsBlogHtml(){
+  const f$=v=>'$'+Math.round(v).toLocaleString('en-CA');
+  const mayors=[
+    {name:'Frank Scarpitti',city:'City of Markham',sal:308179,badge:'21 yrs'},
+    {name:'Olivia Chow',city:'City of Toronto',sal:240349},
+    {name:'Andrew Dilkens',city:'City of Windsor',sal:218949},
+    {name:'Steven Del Duca',city:'City of Vaughan',sal:218545,badge:'Fmr. Liberal Leader',badgeType:'pol'},
+    {name:'Marianne Meed Ward',city:'City of Burlington',sal:214252},
+    {name:'Mark Sutcliffe',city:'City of Ottawa',sal:213921},
+    {name:'Andrea Horwath',city:'City of Hamilton',sal:212764,badge:'Fmr. NDP Leader',badgeType:'pol'},
+    {name:'Elizabeth Roy',city:'Town of Whitby',sal:210674,badge:'↑ Rising',badgeType:'new'},
+    {name:'Rob Burton',city:'Town of Oakville',sal:210448},
+    {name:'David West',city:'City of Richmond Hill',sal:210265},
+    {name:'Adrian Foster',city:'Municipality of Clarington',sal:207233},
+    {name:'Shaun Collier',city:'Town of Ajax',sal:205161},
+    {name:'John Taylor',city:'Town of Newmarket',sal:196159},
+  ];
+  const badgeStyle={
+    '':' style="display:none"',
+    'pol':' style="display:inline-block;font-size:.62rem;font-weight:700;padding:.12rem .4rem;border-radius:50px;text-transform:uppercase;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);color:var(--blue);margin-left:.35rem;vertical-align:middle"',
+    'new':' style="display:inline-block;font-size:.62rem;font-weight:700;padding:.12rem .4rem;border-radius:50px;text-transform:uppercase;background:rgba(21,128,61,.1);border:1px solid rgba(21,128,61,.3);color:var(--green);margin-left:.35rem;vertical-align:middle"',
+    'default':' style="display:inline-block;font-size:.62rem;font-weight:700;padding:.12rem .4rem;border-radius:50px;text-transform:uppercase;background:rgba(196,125,10,.1);border:1px solid rgba(196,125,10,.3);color:var(--gold);margin-left:.35rem;vertical-align:middle"'
+  };
+  const rows=mayors.map((m,i)=>{
+    const bt=m.badgeType||'default';
+    const bdg=m.badge?('<span'+badgeStyle[bt]+'>'+m.badge+'</span>'):'';
+    return '<tr style="border-bottom:1px solid var(--border)">'
+      +'<td style="padding:.6rem .7rem;font-size:.8rem;color:var(--muted);font-weight:700">'+(i+1)+'</td>'
+      +'<td style="padding:.6rem .7rem;font-weight:700;color:var(--text)">'+m.name+bdg+'</td>'
+      +'<td style="padding:.6rem .7rem;color:var(--text2);font-size:.84rem">'+m.city+'</td>'
+      +'<td style="padding:.6rem .7rem;font-weight:800;color:var(--gold);text-align:right;white-space:nowrap">'+f$(m.sal)+'</td>'
+      +'</tr>';
+  }).join('');
+
+  return '<article class="blog-post">'
+    +'<button onclick="renderBlog(null)" style="background:none;border:none;color:var(--muted);font-size:.84rem;cursor:pointer;padding:0;margin-bottom:1.25rem;font-family:inherit">← All articles</button>'
+    +'<div class="blog-post-meta">May 2026 &nbsp;·&nbsp; Data Analysis &nbsp;·&nbsp; Ontario Sunshine List</div>'
+    +'<h1 class="blog-post-title">Ontario\'s Highest Paid Mayors (2025)</h1>'
+    +'<p class="blog-post-byline">Markham\'s Frank Scarpitti tops the province at $308,179 — more than Toronto, Ottawa, or any other mayor in Ontario.</p>'
+
+    +'<div class="blog-hero-stats">'
+    +'<div class="bhs-pill"><span class="bhs-val">$308,179</span><span class="bhs-lbl">Highest mayoral salary (Markham)</span></div>'
+    +'<div class="bhs-pill"><span class="bhs-val">13</span><span class="bhs-lbl">Mayors on 2025 Sunshine List</span></div>'
+    +'<div class="bhs-pill"><span class="bhs-val">21 yrs</span><span class="bhs-lbl">Scarpitti consecutive appearances</span></div>'
+    +'<div class="bhs-pill"><span class="bhs-val">+195%</span><span class="bhs-lbl">Scarpitti salary growth since 2004</span></div>'
+    +'</div>'
+
+    +'<p class="blog-body">Every year Ontario\'s Public Sector Salary Disclosure Act requires municipalities to publish the names and salaries of employees earning $100,000 or more. In 2025, 13 mayors cleared the threshold. The list reveals some surprises: Markham\'s mayor earns more than Toronto\'s, two former provincial party leaders appear, and one mayor has been on the list every year since 2004.</p>'
+
+    +'<h2 class="blog-section-title">2025 Rankings: Ontario\'s Highest Paid Mayors</h2>'
+    +'<div style="overflow-x:auto;margin:1.1rem 0 .35rem">'
+    +'<table style="width:100%;border-collapse:collapse;font-size:.88rem">'
+    +'<thead><tr style="background:var(--surface2);border-bottom:2px solid var(--border2)">'
+    +'<th style="padding:.55rem .7rem;text-align:left;font-size:.71rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">#</th>'
+    +'<th style="padding:.55rem .7rem;text-align:left;font-size:.71rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">Mayor</th>'
+    +'<th style="padding:.55rem .7rem;text-align:left;font-size:.71rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">Municipality</th>'
+    +'<th style="padding:.55rem .7rem;text-align:right;font-size:.71rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">2025 Salary</th>'
+    +'</tr></thead>'
+    +'<tbody>'+rows+'</tbody>'
+    +'</table></div>'
+    +'<p style="font-size:.73rem;color:var(--muted);font-style:italic;margin-bottom:1.5rem">Source: Ontario Sunshine List 2025. All salaries in Canadian dollars.</p>'
+
+    +'<div class="blog-chart-wrap" style="height:390px"><canvas id="bc-mayors"></canvas></div>'
+    +'<p class="blog-chart-caption">2025 Sunshine List salary for Ontario mayors. Markham (gold) earns $67,830 more than #2 Toronto. Hover for exact figures.</p>'
+
+    +'<h2 class="blog-section-title">Frank Scarpitti: Ontario\'s Highest Paid Mayor — By a Long Way</h2>'
+    +'<p class="blog-body">The gap at the top is striking. Frank Scarpitti, Markham\'s mayor since 2003, earns <strong>$308,179</strong> — nearly $68,000 more than Olivia Chow in Toronto, a city roughly 10 times Markham\'s size. Scarpitti first appeared on the Sunshine List in 2004 at <strong>$104,366</strong>. Over 21 consecutive years his salary has grown by <strong>195%</strong> — nearly tripling while the Bank of Canada\'s inflation target averaged 2% annually.</p>'
+
+    +'<div class="blog-pullquote">"Scarpitti\'s 2025 salary of $308,179 is nearly three times what he earned when he first appeared on the Sunshine List in 2004 — higher than every other municipal mayor in the province."</div>'
+
+    +'<div class="blog-chart-wrap" style="height:265px"><canvas id="bc-scarpitti"></canvas></div>'
+    +'<p class="blog-chart-caption">Frank Scarpitti\'s disclosed salary, 2004–2025. Markham became a City in 2012; salary growth accelerated in the years following.</p>'
+
+    +'<h2 class="blog-section-title">Two Former Party Leaders, Now Mayors</h2>'
+    +'<p class="blog-body">Perhaps the most politically notable names are <strong>Steven Del Duca</strong> (Vaughan, $218,545) and <strong>Andrea Horwath</strong> (Hamilton, $212,764) — both former provincial party leaders who moved to municipal politics after their respective election losses. Del Duca led the Ontario Liberals in 2022; Horwath led the NDP for 16 years. Both have seen steady salary growth since taking mayoral office.</p>'
+
+    +'<h2 class="blog-section-title">Why Does Markham Pay More Than Toronto?</h2>'
+    +'<p class="blog-body">Toronto has a population of roughly 2.9 million; Markham has around 380,000. Yet Markham\'s mayor earns <strong>$67,830 more</strong>. The answer lies in how municipalities independently set mayoral compensation, combined with the compounding effects of 21 years of step increases and periodic compensation reviews. Long tenure is the single strongest predictor of a high mayoral salary in Ontario.</p>'
+
+    +'<div class="blog-kpi-row">'
+    +'<div class="blog-kpi"><span class="kv">21 yrs</span><span class="kl">Scarpitti consecutive years on the Sunshine List (2004–2025)</span></div>'
+    +'<div class="blog-kpi"><span class="kv">+195%</span><span class="kl">Scarpitti salary growth ($104K → $308K)</span></div>'
+    +'<div class="blog-kpi"><span class="kv">+99%</span><span class="kl">Dilkens salary growth since 2017 ($110K → $219K)</span></div>'
+    +'<div class="blog-kpi"><span class="kv">$196K</span><span class="kl">Lowest entry salary among 2025\'s top 13 mayors</span></div>'
+    +'</div>'
+
+    +'<p class="blog-body">Want to explore individual mayor salary records? <a href="/" onclick="nav(\'home\');return false" style="color:var(--gold)">Search the full Sunshine List</a> for any Ontario public employee from 1996 to 2025.</p>'
+
+    +'<div class="blog-footer-note">Data sourced from the <a href="https://www.ontario.ca/page/public-sector-salary-disclosure" target="_blank">Ontario Public Sector Salary Disclosure Act</a> (Sunshine List), 1996–2025. Only employees earning $100,000 or more are disclosed. All figures in Canadian dollars. &nbsp;·&nbsp; <a href="/blog/ontario-highest-paid-mayors" target="_blank" style="color:var(--muted)">View standalone article →</a></div>'
+    +'</article>';
+}
+
+function _mayorsBlogCharts(){
+  const G='rgba(196,125,10,', B='rgba(59,130,246,';
+  const names=['Frank Scarpitti','Olivia Chow','Andrew Dilkens','Steven Del Duca','Marianne Meed Ward','Mark Sutcliffe','Andrea Horwath','Elizabeth Roy','Rob Burton','David West','Adrian Foster','Shaun Collier','John Taylor'];
+  const sals=[308179,240349,218949,218545,214252,213921,212764,210674,210448,210265,207233,205161,196159];
+  const bg=sals.map((_,i)=>i===0?G+'0.82)':B+'0.52)');
+  const bd=bg.map(c=>c.replace(/[\d.]+\)$/,'1)'));
+
+  const el1=document.getElementById('bc-mayors');
+  if(el1){
+    _blogCharts.push(new Chart(el1.getContext('2d'),{
+      type:'bar',
+      data:{labels:names,datasets:[{label:'2025 Salary',data:sals,backgroundColor:bg,borderColor:bd,borderWidth:1,borderRadius:4}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' $'+Math.round(c.raw).toLocaleString('en-CA')}}},
+        scales:{
+          x:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#7a90b0',font:{size:9.5},callback:v=>'$'+Math.round(v/1000)+'K'}},
+          y:{ticks:{color:'var(--text)',font:{size:10.5}}}
+        }}
+    }));
+  }
+
+  const scYears=[2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025];
+  const scSals=[104366,106020,111217,148200,164369,163814,165781,173937,176451,178701,191997,187130,187882,195374,246520,239694,261900,253416,268470,278473,283899,308179];
+  const el2=document.getElementById('bc-scarpitti');
+  if(el2){
+    _blogCharts.push(new Chart(el2.getContext('2d'),{
+      type:'line',
+      data:{labels:scYears,datasets:[{label:'Frank Scarpitti — Markham',data:scSals,borderColor:'#c47d0a',backgroundColor:'rgba(196,125,10,0.08)',borderWidth:2.5,pointRadius:3,pointBackgroundColor:'#c47d0a',fill:true,tension:.35}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' $'+Math.round(c.raw).toLocaleString('en-CA')}}},
+        scales:{
+          x:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#7a90b0',font:{size:9}}},
+          y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#7a90b0',font:{size:9},callback:v=>'$'+Math.round(v/1000)+'K'}}
+        }}
+    }));
+  }
 }
 
 function _shortForce(n){
