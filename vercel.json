@@ -1,16 +1,25 @@
 {
   "version": 2,
   "builds": [
-    { "src": "index.html", "use": "@vercel/static" },
-    { "src": "*.js", "use": "@vercel/static" },
-    { "src": "*.png", "use": "@vercel/static" },
-    { "src": "*.ico", "use": "@vercel/static" },
-    { "src": "*.xml", "use": "@vercel/static" },
-    { "src": "*.txt", "use": "@vercel/static" },
-    { "src": "*.webmanifest", "use": "@vercel/static" },
-    { "src": "ontario-highest-paid-mayors.html", "use": "@vercel/static" },
-    { "src": "blog/ontario-highest-paid-mayors.html", "use": "@vercel/static" }
+    { "src": "**/*", "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/ontario-highest-paid-mayors", "dest": "/ontario-highest-paid-mayors.html" },
-    { "src": "/blog/ontario-highest-paid-ma
+    { "src": "/blog/ontario-highest-paid-mayors", "dest": "/blog/ontario-highest-paid-mayors.html" },
+    { "handle": "filesystem" }
+  ],
+  "headers": [
+    {
+      "source": "/(employer_data|search_complete)\\.js",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }]
+    },
+    {
+      "source": "/index.html",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600" }]
+    },
+    {
+      "source": "/(sitemap\\.xml|robots\\.txt)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }]
+    }
+  ]
+}
